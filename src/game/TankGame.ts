@@ -49,6 +49,8 @@ export class TankGame {
   private craterMat = new THREE.MeshStandardMaterial({ color: 0x3d3528, roughness: 1 });
   private craters: THREE.Mesh[] = [];
   private readonly MAX_CRATERS = 40;
+  private rubbleMat = new THREE.MeshStandardMaterial({ color: 0x6a655c, roughness: 0.98 });
+  private rubbleDarkMat = new THREE.MeshStandardMaterial({ color: 0x45423b, roughness: 1 });
 
   private raycaster = new THREE.Raycaster();
   private hudAccum = 0;
@@ -328,12 +330,19 @@ export class TankGame {
           this.addCrater(point);
           for (const o of this.obstacles) {
             if (o.destructible && o.hp !== undefined && o.hp > 0 && o.box.containsPoint(point)) {
-              this.destructibleManager.damage(o, Math.round(30 * (type === "he" ? 1.5 : 1)), (ob) => {
+              const dmg = Math.round(34 * (type === "he" ? 1.6 : type === "heat" ? 1.15 : 1));
+              const destroyed = this.destructibleManager.damage(o, dmg, (ob) => {
+                const size = ob.box.getSize(this._v3a);
+                const center = ob.box.getCenter(this._v3b);
+                const sy = size.y, cx = center.x, cz = center.z;
+                this.spawnRubble(center, size);
                 ob.mesh.visible = false;
                 ob.box.min.set(0, 0, 0);
                 ob.box.max.set(0, 0, 0);
-                this.effectsManager.spawnImpact(point, 1.5, this.flashGeo, this.sparkGeo);
+                this.effectsManager.spawnImpact(this._v3a.set(cx, sy * 0.4, cz), Math.min(3.2, 1.4 + sy * 0.12), this.flashGeo, this.sparkGeo);
+                this.shake = Math.max(this.shake, 0.6);
               });
+              if (!destroyed) this.spawnDebris(point);
               break;
             }
           }
@@ -415,8 +424,56 @@ export class TankGame {
 
   private markDestructibles() {
     for (const o of this.obstacles) {
-      if (o.mesh.userData.type === "crate") this.destructibleManager.markDestructible(o, 40);
+      const hp = o.mesh.userData.destructibleHp;
+      if (typeof hp === "number" && hp > 0) this.destructibleManager.markDestructible(o, hp);
     }
+  }
+
+  private spawnDebris(point: THREE.Vector3) {
+    const group = new THREE.Group();
+    const count = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const s = 0.18 + Math.random() * 0.32;
+      const chunk = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), Math.random() < 0.5 ? this.rubbleMat : this.rubbleDarkMat);
+      chunk.position.set(point.x + (Math.random() - 0.5) * 1.2, point.y + Math.random() * 0.8, point.z + (Math.random() - 0.5) * 1.2);
+      chunk.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      chunk.castShadow = true;
+      group.add(chunk);
+    }
+    this.scene.add(group);
+    const start = Date.now();
+    const anim = () => {
+      if (this.disposed) return;
+      const t = (Date.now() - start) / 1000;
+      if (t > 0.9) {
+        group.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });
+        this.scene.remove(group);
+        return;
+      }
+      for (const c of group.children) c.position.y = Math.max(0.1, c.position.y - t * 0.06);
+      requestAnimationFrame(anim);
+    };
+    anim();
+  }
+
+  private spawnRubble(center: THREE.Vector3, size: THREE.Vector3) {
+    const group = new THREE.Group();
+    const footprint = Math.max(size.x, size.z);
+    const chunks = Math.min(26, Math.round(6 + footprint * 1.4));
+    for (let i = 0; i < chunks; i++) {
+      const s = 0.5 + Math.random() * Math.min(2.2, footprint * 0.28);
+      const chunk = new THREE.Mesh(new THREE.BoxGeometry(s, s * (0.5 + Math.random() * 0.5), s), Math.random() < 0.5 ? this.rubbleMat : this.rubbleDarkMat);
+      chunk.position.set(
+        center.x + (Math.random() - 0.5) * size.x * 0.95,
+        s * 0.3,
+        center.z + (Math.random() - 0.5) * size.z * 0.95,
+      );
+      chunk.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+      chunk.castShadow = true;
+      chunk.receiveShadow = true;
+      group.add(chunk);
+    }
+    this.scene.add(group);
   }
 
   // ---- bot AI ----
@@ -829,6 +886,8 @@ export class TankGame {
     this.sparkGeo?.dispose();
     this.flashGeo?.dispose();
     this.craterMat?.dispose();
+    this.rubbleMat?.dispose();
+    this.rubbleDarkMat?.dispose();
     disposeScene(this.scene);
     this.renderer.dispose();
   }

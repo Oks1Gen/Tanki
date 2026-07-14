@@ -94,6 +94,7 @@ export class SceneBuilder {
       this.scene.add(cap);
     }
     this.buildRoads();
+    this.buildTerrain();
   }
 
   private makeGroundTexture(maxAnisotropy: number): THREE.Texture {
@@ -101,26 +102,148 @@ export class SceneBuilder {
     const c = document.createElement("canvas");
     c.width = c.height = size;
     const ctx = c.getContext("2d")!;
-    ctx.fillStyle = "#4a5134";
+
+    // base grass gradient with large-scale tonal variation
+    ctx.fillStyle = "#495030";
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 4600; i++) {
-      const x = Math.random() * size, y = Math.random() * size, r = Math.random() * 16 + 1;
-      const g = Math.random() > 0.5 ? 78 + Math.random() * 36 : 45 + Math.random() * 24;
-      ctx.fillStyle = `rgba(${42 + Math.random() * 34},${g},${28 + Math.random() * 22},${0.2 + Math.random() * 0.34})`;
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random() * size, y = Math.random() * size, r = 90 + Math.random() * 200;
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const lighter = Math.random() > 0.5;
+      grd.addColorStop(0, lighter ? "rgba(96,108,58,0.35)" : "rgba(58,64,38,0.4)");
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
-    for (let i = 0; i < 1100; i++) {
-      const x = Math.random() * size, y = Math.random() * size, length = 3 + Math.random() * 10;
-      ctx.strokeStyle = `rgba(205,190,145,${0.06 + Math.random() * 0.12})`;
+
+    // dirt / mud patches
+    for (let i = 0; i < 26; i++) {
+      const cx = Math.random() * size, cy = Math.random() * size, br = 34 + Math.random() * 90;
+      const pts = 10 + Math.floor(Math.random() * 8);
+      ctx.beginPath();
+      for (let j = 0; j <= pts; j++) {
+        const a = (j / pts) * Math.PI * 2, v = 0.6 + Math.random() * 0.5;
+        const px = cx + br * v * Math.cos(a), py = cy + br * v * Math.sin(a);
+        j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      const tone = 78 + Math.random() * 34;
+      ctx.fillStyle = `rgba(${tone},${Math.round(tone * 0.8)},${Math.round(tone * 0.55)},${0.28 + Math.random() * 0.3})`;
+      ctx.fill();
+    }
+
+    // grass speckle
+    for (let i = 0; i < 6000; i++) {
+      const x = Math.random() * size, y = Math.random() * size, r = Math.random() * 14 + 1;
+      const g = Math.random() > 0.5 ? 82 + Math.random() * 40 : 46 + Math.random() * 26;
+      ctx.fillStyle = `rgba(${42 + Math.random() * 34},${g},${28 + Math.random() * 22},${0.18 + Math.random() * 0.32})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // scattered pebbles and dry blades
+    for (let i = 0; i < 900; i++) {
+      const x = Math.random() * size, y = Math.random() * size;
+      const shade = 120 + Math.random() * 70;
+      ctx.fillStyle = `rgba(${shade},${Math.round(shade * 0.94)},${Math.round(shade * 0.78)},${0.2 + Math.random() * 0.25})`;
+      ctx.beginPath(); ctx.arc(x, y, 0.7 + Math.random() * 2, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let i = 0; i < 1400; i++) {
+      const x = Math.random() * size, y = Math.random() * size, length = 3 + Math.random() * 11;
+      ctx.strokeStyle = `rgba(205,190,145,${0.05 + Math.random() * 0.12})`;
       ctx.lineWidth = 0.5 + Math.random() * 1.5;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + length, y + (Math.random() - 0.5) * 5); ctx.stroke();
     }
+
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.repeat.set(10, 10);
+    tex.repeat.set(9, 9);
     tex.anisotropy = Math.min(8, maxAnisotropy);
     return tex;
+  }
+
+  // ---- procedural terrain (surrounding hills) ----
+
+  private hash2(x: number, y: number): number {
+    const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
+  private noise2(x: number, y: number): number {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf);
+    const v = yf * yf * (3 - 2 * yf);
+    const a = this.hash2(xi, yi);
+    const b = this.hash2(xi + 1, yi);
+    const c = this.hash2(xi, yi + 1);
+    const d = this.hash2(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+
+  private fbm(x: number, y: number): number {
+    let total = 0, amp = 0.5, freq = 1;
+    for (let i = 0; i < 4; i++) {
+      total += this.noise2(x * freq, y * freq) * amp;
+      freq *= 2; amp *= 0.5;
+    }
+    return total;
+  }
+
+  private terrainHeight(x: number, z: number): number {
+    const inner = MAP_HALF + 22;
+    const outer = MAP_HALF + 130;
+    const cheb = Math.max(Math.abs(x), Math.abs(z));
+    let t = (cheb - inner) / (outer - inner);
+    t = Math.max(0, Math.min(1, t));
+    t = t * t * (3 - 2 * t);
+    const rolling = (this.fbm(x * 0.011 + 5, z * 0.011 + 9) - 0.5);
+    const ridged = Math.pow(this.fbm(x * 0.0045 + 20, z * 0.0045 + 3), 1.4);
+    const micro = (this.noise2(x * 0.08, z * 0.08) - 0.5);
+    let h = rolling * 30 * t + ridged * 46 * t * t + micro * 1.4 * t;
+    if (h < 0) h *= 0.4;
+    return h;
+  }
+
+  private buildTerrain() {
+    const size = (MAP_HALF + 340) * 2;
+    const seg = 220;
+    const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+
+    const cGrass = new THREE.Color(0x495030);
+    const cDry = new THREE.Color(0x6b6a3c);
+    const cRock = new THREE.Color(0x6a6152);
+    const cHigh = new THREE.Color(0x817a67);
+    const cSnow = new THREE.Color(0xe4e8ea);
+    const tmp = new THREE.Color();
+    const colors = new Float32Array(pos.count * 3);
+
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      const h = this.terrainHeight(x, z);
+      pos.setY(i, h);
+
+      const hn = Math.max(0, Math.min(1, h / 42));
+      if (hn < 0.18) tmp.copy(cGrass).lerp(cDry, hn / 0.18);
+      else if (hn < 0.5) tmp.copy(cDry).lerp(cRock, (hn - 0.18) / 0.32);
+      else if (hn < 0.78) tmp.copy(cRock).lerp(cHigh, (hn - 0.5) / 0.28);
+      else tmp.copy(cHigh).lerp(cSnow, (hn - 0.78) / 0.22);
+      const tint = 0.9 + this.noise2(x * 0.03, z * 0.03) * 0.2;
+      colors[i * 3] = tmp.r * tint;
+      colors[i * 3 + 1] = tmp.g * tint;
+      colors[i * 3 + 2] = tmp.b * tint;
+    }
+
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+    const terrain = new THREE.Mesh(geo, mat);
+    terrain.position.y = -0.06;
+    terrain.receiveShadow = true;
+    terrain.castShadow = false;
+    this.scene.add(terrain);
   }
 
   private buildRoads() {
@@ -161,7 +284,9 @@ export class SceneBuilder {
       this.obstacles.push({ box, mesh });
     };
 
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x777772, roughness: 0.92 });
+    const concreteTones = [0x777772, 0x6f6c65, 0x84817a, 0x606a6c, 0x877b69, 0x6a726d].map(
+      (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.92 }),
+    );
     const concreteDark = new THREE.MeshStandardMaterial({ color: 0x4a4b49, roughness: 0.95 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x292d30, roughness: 0.72, metalness: 0.25 });
     const windowMat = new THREE.MeshStandardMaterial({ color: 0x172028, roughness: 0.2, metalness: 0.65, emissive: 0x111923, emissiveIntensity: 0.28 });
@@ -175,9 +300,15 @@ export class SceneBuilder {
 
     const makeBuilding = (w: number, d: number, h: number) => {
       const building = new THREE.Group();
-      addWorldBox(building, [w, h, d], [0, h / 2, 0], concreteMat);
+      const bodyMat = concreteTones[Math.floor(Math.random() * concreteTones.length)];
+      addWorldBox(building, [w, h, d], [0, h / 2, 0], bodyMat);
       addWorldBox(building, [w + 0.35, 0.28, d + 0.35], [0, h + 0.14, 0], roofMat);
       addWorldBox(building, [w * 0.34, 0.8, d * 0.32], [0, h + 0.54, 0], roofMat);
+      // rooftop details on taller buildings
+      if (h > 11) {
+        addWorldBox(building, [w * 0.18, 1.6, d * 0.18], [w * 0.22, h + 0.94, -d * 0.2], concreteDark);
+        addWorldBox(building, [0.1, 2.4, 0.1], [-w * 0.28, h + 1.5, d * 0.24], roofMat);
+      }
       addWorldBox(building, [w * 0.22, 2.4, 0.08], [0, 1.2, d / 2 + 0.045], concreteDark);
       const floors = Math.max(1, Math.floor((h - 1.4) / 2.2));
       const columns = Math.max(2, Math.floor(w / 2.4));
@@ -190,22 +321,27 @@ export class SceneBuilder {
           addWorldBox(building, [0.82, 0.72, 0.07], [wx, wy, -d / 2 - 0.055], windowMat);
         }
       }
+      building.userData.type = "building";
+      building.userData.destructibleHp = Math.round(70 + h * 11 + w * d * 0.6);
       return building;
     };
 
     const makeBarrier = () => {
       const barrier = new THREE.Group();
       for (let i = -2; i <= 2; i++) {
-        const block = addWorldBox(barrier, [2.2, 1.45, 1.0], [i * 2.05, 0.73, Math.abs(i) * 0.32], concreteMat);
+        const block = addWorldBox(barrier, [2.2, 1.45, 1.0], [i * 2.05, 0.73, Math.abs(i) * 0.32], concreteTones[0]);
         block.rotation.z = i * 0.018;
         addWorldBox(barrier, [2.28, 0.16, 1.08], [i * 2.05, 1.48, Math.abs(i) * 0.32], concreteDark);
       }
+      barrier.userData.type = "barrier";
+      barrier.userData.destructibleHp = 120;
       return barrier;
     };
 
     const makeCrates = () => {
       const crates = new THREE.Group();
       crates.userData.type = "crate";
+      crates.userData.destructibleHp = 40;
       for (let i = 0; i < 4; i++) {
         const size = rand(1.45, 2.1);
         const x = (i % 2) * 1.7 - 0.85 + rand(-0.15, 0.15);
@@ -232,22 +368,29 @@ export class SceneBuilder {
       return rocks;
     };
 
+    const makeVariedBuilding = () => {
+      const r = Math.random();
+      if (r < 0.4) return makeBuilding(rand(5, 7.5), rand(5, 7.5), rand(4.5, 7.5));      // low house
+      if (r < 0.78) return makeBuilding(rand(6.5, 9.5), rand(6.5, 9.5), rand(8.5, 13.5)); // mid-rise
+      return makeBuilding(rand(6, 8.5), rand(6, 8.5), rand(15, 24));                       // tower
+    };
+
     let attempts = 0, placed = 0;
-    while (placed < 22 && attempts < 500) {
+    while (placed < 40 && attempts < 900) {
       attempts++;
       const x = rand(-MAP_HALF + 8, MAP_HALF - 8);
       const z = rand(-MAP_HALF + 8, MAP_HALF - 8);
       if (!isFarFromCenter(x, z)) continue;
       let ok = true;
       for (const o of this.obstacles) {
-        if (Math.abs(x - (o.box.min.x + o.box.max.x) / 2) < 10 && Math.abs(z - (o.box.min.z + o.box.max.z) / 2) < 10) { ok = false; break; }
+        if (Math.abs(x - (o.box.min.x + o.box.max.x) / 2) < 11 && Math.abs(z - (o.box.min.z + o.box.max.z) / 2) < 11) { ok = false; break; }
       }
       if (!ok) continue;
       const kind = Math.random();
       let obstacle: THREE.Object3D;
-      if (kind < 0.42) obstacle = makeBuilding(rand(5.5, 9), rand(5.5, 9), rand(4.5, 9.5));
-      else if (kind < 0.62) obstacle = makeBarrier();
-      else if (kind < 0.82) obstacle = makeCrates();
+      if (kind < 0.5) obstacle = makeVariedBuilding();
+      else if (kind < 0.68) obstacle = makeBarrier();
+      else if (kind < 0.86) obstacle = makeCrates();
       else obstacle = makeRocks();
       obstacle.rotation.y = Math.round(Math.random() * 3) * (Math.PI / 2) + rand(-0.08, 0.08);
       obstacle.traverse((object) => { const m = object as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
@@ -260,48 +403,106 @@ export class SceneBuilder {
     const rand = (a: number, b: number) => a + Math.random() * (b - a);
     const dummy = new THREE.Object3D();
 
-    const grassGeo = new THREE.ConeGeometry(0.18, 0.75, 4);
-    grassGeo.translate(0, 0.375, 0);
-    const grassMat = new THREE.MeshStandardMaterial({ color: 0x68733d, roughness: 1 });
-    const grass = new THREE.InstancedMesh(grassGeo, grassMat, 320);
-    let grassIndex = 0;
-    while (grassIndex < 320) {
+    // ---- grass tufts (with per-instance colour variation) ----
+    const grassGeo = new THREE.ConeGeometry(0.17, 0.78, 4);
+    grassGeo.translate(0, 0.39, 0);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
+    const grassCount = 620;
+    const grass = new THREE.InstancedMesh(grassGeo, grassMat, grassCount);
+    const grassTones = [new THREE.Color(0x68733d), new THREE.Color(0x7c8544), new THREE.Color(0x565f30), new THREE.Color(0x8a8b46)];
+    let grassIndex = 0, grassTries = 0;
+    while (grassIndex < grassCount && grassTries < grassCount * 6) {
+      grassTries++;
       const x = rand(-MAP_HALF + 3, MAP_HALF - 3);
       const z = rand(-MAP_HALF + 3, MAP_HALF - 3);
       if (Math.hypot(x, z) < 8 || pointBlocked(x, z, 0.5)) continue;
-      const scale = rand(0.55, 1.45);
+      const scale = rand(0.5, 1.5);
       dummy.position.set(x, 0, z);
-      dummy.rotation.set(0, rand(0, Math.PI), rand(-0.15, 0.15));
-      dummy.scale.set(scale, scale, scale);
+      dummy.rotation.set(rand(-0.12, 0.12), rand(0, Math.PI), rand(-0.15, 0.15));
+      dummy.scale.set(scale, scale * rand(0.85, 1.3), scale);
       dummy.updateMatrix();
-      grass.setMatrixAt(grassIndex++, dummy.matrix);
+      grass.setMatrixAt(grassIndex, dummy.matrix);
+      grass.setColorAt(grassIndex, grassTones[Math.floor(Math.random() * grassTones.length)]);
+      grassIndex++;
     }
+    grass.count = grassIndex;
     grass.castShadow = true; grass.receiveShadow = true;
     this.scene.add(grass);
 
-    const trunkGeo = new THREE.CylinderGeometry(0.22, 0.35, 3.8, 7);
-    const crownGeo = new THREE.ConeGeometry(2.2, 5.2, 8);
+    // ---- bushes / shrubs inside the arena ----
+    const bushGeo = new THREE.IcosahedronGeometry(0.85, 0);
+    const bushMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true });
+    const bushCount = 110;
+    const bushes = new THREE.InstancedMesh(bushGeo, bushMat, bushCount);
+    const bushTones = [new THREE.Color(0x34532c), new THREE.Color(0x3f5f2f), new THREE.Color(0x2c4726)];
+    let bushIndex = 0, bushTries = 0;
+    while (bushIndex < bushCount && bushTries < bushCount * 8) {
+      bushTries++;
+      const x = rand(-MAP_HALF + 4, MAP_HALF - 4);
+      const z = rand(-MAP_HALF + 4, MAP_HALF - 4);
+      if (Math.hypot(x, z) < 12 || pointBlocked(x, z, 1)) continue;
+      const s = rand(0.7, 1.7);
+      dummy.position.set(x, s * 0.42, z);
+      dummy.rotation.set(rand(0, Math.PI), rand(0, Math.PI), rand(0, Math.PI));
+      dummy.scale.set(s * rand(1, 1.5), s * rand(0.7, 1.1), s * rand(1, 1.5));
+      dummy.updateMatrix();
+      bushes.setMatrixAt(bushIndex, dummy.matrix);
+      bushes.setColorAt(bushIndex, bushTones[Math.floor(Math.random() * bushTones.length)]);
+      bushIndex++;
+    }
+    bushes.count = bushIndex;
+    bushes.castShadow = true; bushes.receiveShadow = true;
+    this.scene.add(bushes);
+
+    // ---- trees: near ring on flat ground + forests climbing the hills ----
+    const trunkGeo = new THREE.CylinderGeometry(0.22, 0.36, 3.8, 7);
+    const crownGeo = new THREE.ConeGeometry(2.2, 5.4, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4b3623, roughness: 1 });
-    const crownMat = new THREE.MeshStandardMaterial({ color: 0x2f462d, roughness: 1 });
-    const trees = 54;
-    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, trees);
-    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, trees);
-    for (let i = 0; i < trees; i++) {
-      const angle = (i / trees) * Math.PI * 2 + rand(-0.08, 0.08);
-      const radius = rand(MAP_HALF + 7, MAP_HALF + 25);
-      const scale = rand(0.75, 1.35);
-      dummy.position.set(Math.cos(angle) * radius, 1.9 * scale, Math.sin(angle) * radius);
+    const crownMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
+    const crownTones = [new THREE.Color(0x2f462d), new THREE.Color(0x37522f), new THREE.Color(0x28402a), new THREE.Color(0x415a33)];
+
+    const trunkMats: THREE.Matrix4[] = [];
+    const crownMats: THREE.Matrix4[] = [];
+    const crownCols: THREE.Color[] = [];
+    const pushTree = (x: number, y: number, z: number, scale: number) => {
+      dummy.position.set(x, y + 1.9 * scale, z);
       dummy.rotation.set(0, rand(0, Math.PI), 0);
       dummy.scale.set(scale, scale, scale);
       dummy.updateMatrix();
-      trunks.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 5.1 * scale;
+      trunkMats.push(dummy.matrix.clone());
+      dummy.position.y = y + 5.2 * scale;
       dummy.updateMatrix();
-      crowns.setMatrixAt(i, dummy.matrix);
+      crownMats.push(dummy.matrix.clone());
+      crownCols.push(crownTones[Math.floor(Math.random() * crownTones.length)]);
+    };
+
+    // near ring, kept on the flat battlefield edge
+    for (let i = 0; i < 72; i++) {
+      const angle = (i / 72) * Math.PI * 2 + rand(-0.08, 0.08);
+      const radius = rand(MAP_HALF + 2, MAP_HALF + 19);
+      pushTree(Math.cos(angle) * radius, 0, Math.sin(angle) * radius, rand(0.8, 1.4));
     }
-    trunks.castShadow = true; crowns.castShadow = true;
+    // hillside forests, following the terrain height
+    for (let i = 0; i < 300; i++) {
+      const angle = rand(0, Math.PI * 2);
+      const radius = rand(MAP_HALF + 24, MAP_HALF + 230);
+      const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+      const y = this.terrainHeight(x, z);
+      if (y > 30 || y < 0.5) continue;
+      pushTree(x, y, z, rand(0.7, 1.5));
+    }
+
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, trunkMats.length);
+    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, crownMats.length);
+    for (let i = 0; i < trunkMats.length; i++) {
+      trunks.setMatrixAt(i, trunkMats[i]);
+      crowns.setMatrixAt(i, crownMats[i]);
+      crowns.setColorAt(i, crownCols[i]);
+    }
+    trunks.castShadow = true; crowns.castShadow = true; crowns.receiveShadow = true;
     this.scene.add(trunks, crowns);
 
+    // ---- shell craters on the battlefield ----
     const craterMat = new THREE.MeshStandardMaterial({ color: 0x302d25, roughness: 1 });
     for (let i = 0; i < 13; i++) {
       const x = rand(-MAP_HALF + 10, MAP_HALF - 10);
@@ -313,13 +514,38 @@ export class SceneBuilder {
       this.scene.add(crater);
     }
 
-    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x5d6665, roughness: 1, flatShading: true });
-    for (let i = 0; i < 20; i++) {
-      const angle = (i / 20) * Math.PI * 2;
-      const radius = rand(150, 205);
-      const mountain = new THREE.Mesh(new THREE.ConeGeometry(rand(18, 32), rand(28, 55), 7), mountainMat);
-      mountain.position.set(Math.cos(angle) * radius, mountain.geometry.parameters.height / 2 - 5, Math.sin(angle) * radius);
+    // ---- layered mountains for horizon depth ----
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xe6ebee, roughness: 0.9, flatShading: true });
+    const midMat = new THREE.MeshStandardMaterial({ color: 0x5a6360, roughness: 1, flatShading: true });
+    for (let i = 0; i < 34; i++) {
+      const angle = (i / 34) * Math.PI * 2 + rand(-0.05, 0.05);
+      const radius = MAP_HALF + rand(120, 190);
+      const h = rand(42, 96);
+      const r = rand(20, 42);
+      const mountain = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), midMat);
+      mountain.position.set(Math.cos(angle) * radius, h / 2 - 6, Math.sin(angle) * radius);
       mountain.scale.z = rand(0.65, 1.4);
+      mountain.rotation.y = rand(0, Math.PI);
+      mountain.castShadow = false; mountain.receiveShadow = true;
+      this.scene.add(mountain);
+      if (h > 64) {
+        const capH = h * 0.32;
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, capH, 7), snowMat);
+        cap.position.set(mountain.position.x, mountain.position.y + h / 2 - capH / 2, mountain.position.z);
+        cap.scale.z = mountain.scale.z;
+        cap.rotation.y = mountain.rotation.y;
+        this.scene.add(cap);
+      }
+    }
+    // distant hazy range
+    const farMat = new THREE.MeshStandardMaterial({ color: 0x8fa2ac, roughness: 1, flatShading: true });
+    for (let i = 0; i < 30; i++) {
+      const angle = (i / 30) * Math.PI * 2 + rand(-0.04, 0.04);
+      const radius = MAP_HALF + rand(220, 300);
+      const h = rand(70, 140);
+      const mountain = new THREE.Mesh(new THREE.ConeGeometry(rand(34, 60), h, 6), farMat);
+      mountain.position.set(Math.cos(angle) * radius, h / 2 - 10, Math.sin(angle) * radius);
+      mountain.scale.z = rand(0.7, 1.5);
       this.scene.add(mountain);
     }
   }

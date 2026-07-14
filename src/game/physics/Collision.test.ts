@@ -63,6 +63,7 @@ vi.mock("three", () => {
 });
 
 import { resolveCollision, pointBlocked, lineOfSight } from "./Collision";
+import { MAP_HALF } from "../../constants";
 
 function makeBox(minX: number, minZ: number, maxX: number, maxZ: number, minY = 0, maxY = 3) {
   const { Vector3, Box3, Object3D } = require("three");
@@ -92,9 +93,9 @@ describe("resolveCollision", () => {
 
   it("clamps to map boundary", () => {
     const { Vector2 } = require("three");
-    const pos = new Vector2(100, 0);
+    const pos = new Vector2(MAP_HALF + 40, 0);
     resolveCollision(pos, 2, []);
-    expect(pos.x).toBe(76);
+    expect(pos.x).toBe(MAP_HALF - 2);
   });
 });
 
