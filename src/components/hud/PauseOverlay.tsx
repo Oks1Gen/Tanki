@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import type { TankGame } from "../../game/TankGame";
 
 export default function PauseOverlay({ gameRef, onExit }: { gameRef: React.RefObject<TankGame | null>; onExit: () => void }) {

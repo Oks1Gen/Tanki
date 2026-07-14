@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { GameResult, GameSettings, HudState } from "../types";
+import type { GameResult, GameSettings, HudState, GameStats } from "../types";
 import { TankGame } from "../game/TankGame";
 import HealthReloadPanel from "./hud/HealthReloadPanel";
 import CombatTally from "./hud/CombatTally";
 import HeadingDisplay from "./hud/HeadingDisplay";
+import Minimap from "./hud/Minimap";
 import PauseOverlay from "./hud/PauseOverlay";
 import GameOverOverlay from "./hud/GameOverOverlay";
 
@@ -28,11 +29,13 @@ function Crosshair({ ready, x, y, pitchDeg }: { ready: boolean; x: number; y: nu
 }
 
 export default function GameView({
-  settings, onExit, onRestart,
+  settings, onExit, onRestart, onGoldEarned, onXpEarned,
 }: {
   settings: GameSettings;
   onExit: () => void;
   onRestart: () => void;
+  onGoldEarned?: (gold: number) => void;
+  onXpEarned?: (xp: number, result: "win" | "lose", stats: { kills: number; damage: number; shotsFired: number; shotsHit: number }) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<TankGame | null>(null);
@@ -41,15 +44,30 @@ export default function GameView({
     kills: 0, reloadPct: 1, ready: true, speedKmh: 0,
     hullHeadingDeg: 180, turretHeadingDeg: 180, barrelPitchDeg: 0, damageFlash: 0,
     targetName: "", targetHealth: 0, targetMaxHealth: 0,
+    modules: { trackLeft: 100, trackRight: 100, gun: 100, engine: 100 },
+    ammo: { ap: 18, heat: 10, he: 8, current: "ap" },
+    magAmmo: 1, magSize: 1,
+    minimapEntities: [],
+    pickupAlert: "",
   });
   const [paused, setPaused] = useState(true);
   const [ended, setEnded] = useState<GameResult>(null);
+  const [stats, setStats] = useState<GameStats | null>(null);
   const [aim, setAim] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!canvasRef.current) return;
     const game = new TankGame(canvasRef.current, settings, {
-      onHud: setHud, onEnd: setEnded, onPause: setPaused,
+      onHud: setHud,
+      onEnd: (r, s) => {
+        setEnded(r);
+        if (s) {
+          setStats(s);
+          onGoldEarned?.(s.goldEarned);
+          if (r !== null) onXpEarned?.(s.xpEarned, r, { kills: s.kills, damage: s.damageDealt, shotsFired: s.shotsFired, shotsHit: s.shotsHit });
+        }
+      },
+      onPause: setPaused,
       onAim: (x, y) => setAim({ x, y }),
     });
     gameRef.current = game;
@@ -78,20 +96,52 @@ export default function GameView({
 
       <div className="pointer-events-none absolute inset-0 select-none">
         <Crosshair ready={hud.ready} x={aim.x} y={aim.y} pitchDeg={hud.barrelPitchDeg} />
+        {hud.magSize > 1 && (
+          <div className="pointer-events-none absolute -translate-x-1/2" style={{ left: `${(aim.x + 1) * 50}%`, top: `${(1 - aim.y) * 50 + 12.5}%` }}>
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: hud.magSize }, (_, i) => (
+                <span key={i} className={`block h-2 w-2 rounded-full ${i < hud.magAmmo ? 'bg-lime-400 shadow-[0_0_6px_#b6d94c]' : 'bg-lime-900/50'}`} />
+              ))}
+            </div>
+          </div>
+        )}
         <HealthReloadPanel hud={hud} tankModel={settings.tankModel} />
         <CombatTally hud={hud} />
+        <Minimap entities={hud.minimapEntities} />
         <HeadingDisplay hud={hud} />
+        {hud.pickupAlert && (
+          <div className="absolute left-1/2 top-24 -translate-x-1/2 hud-panel px-4 py-1.5 mono text-[10px] text-lime-300">
+            {hud.pickupAlert}
+          </div>
+        )}
+        {/* Ammo & module status bottom-left */}
+        <div className="absolute bottom-4 left-20 flex flex-col gap-0.5 mono text-[8px] text-lime-500/50">
+          <div>
+            <span className={hud.ammo.current === "ap" ? "text-lime-300" : ""}>AP</span>
+            <span className="mx-1">|</span>
+            <span className={hud.ammo.current === "heat" ? "text-lime-300" : ""}>HEAT</span>
+            <span className="mx-1">|</span>
+            <span className={hud.ammo.current === "he" ? "text-lime-300" : ""}>HE</span>
+            <span className="ml-1 text-lime-400/70">{hud.ammo[hud.ammo.current]}</span>
+          </div>
+          <div>
+            <span className={hud.modules.gun <= 0 ? "text-red-400" : ""}>⚙ {Math.ceil(hud.modules.gun)}%</span>
+            <span className="mx-1">|</span>
+            <span className={hud.modules.engine <= 0 ? "text-red-400" : ""}>⚡ {Math.ceil(hud.modules.engine)}%</span>
+          </div>
+        </div>
         {/* Keybind legend */}
         <div className="absolute bottom-4 left-4 flex flex-col gap-0.5 mono text-[8px] uppercase tracking-[0.14em] text-lime-500/40">
           <div><span className="text-lime-300/60">WASD</span> движение</div>
           <div><span className="text-lime-300/60">МЫШЬ</span> прицел</div>
           <div><span className="text-lime-300/60">ЛКМ</span> огонь</div>
+          <div><span className="text-lime-300/60">Q/E</span> тип снаряда</div>
           <div><span className="text-lime-300/60">ESC</span> пауза</div>
         </div>
       </div>
 
       {paused && ended === null && <PauseOverlay gameRef={gameRef} onExit={onExit} />}
-      {ended !== null && <GameOverOverlay result={ended} hud={hud} onRestart={onRestart} onExit={onExit} />}
+      {ended !== null && <GameOverOverlay result={ended} stats={stats} hud={hud} onRestart={onRestart} onExit={onExit} />}
     </div>
   );
 }

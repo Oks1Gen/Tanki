@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import type { Shell, Tank } from "../GameTypes";
+import type { AmmoType } from "../../types";
 
-export function createShellManager(scene: THREE.Scene, shellGeo: THREE.SphereGeometry, shellMat: THREE.MeshBasicMaterial, trailMat: THREE.MeshBasicMaterial) {
+const COLORS: Record<AmmoType, number> = { ap: 0xfff2b0, heat: 0xff6a3a, he: 0xff4444 };
+
+export function createShellManager(scene: THREE.Scene, shellGeo: THREE.SphereGeometry, _shellMat: THREE.MeshBasicMaterial, trailMat: THREE.MeshBasicMaterial) {
   const shells: Shell[] = [];
   const _prev = new THREE.Vector3();
   const _next = new THREE.Vector3();
@@ -13,21 +16,23 @@ export function createShellManager(scene: THREE.Scene, shellGeo: THREE.SphereGeo
   const _up = new THREE.Vector3(0, 0, 1);
   const _dir = new THREE.Vector3();
 
-  function spawnShell(origin: THREE.Vector3, vel: THREE.Vector3, owner: Tank, damage: number) {
+  function spawnShell(origin: THREE.Vector3, vel: THREE.Vector3, owner: Tank, damage: number, type: AmmoType) {
     const group = new THREE.Group();
-    const tip = new THREE.Mesh(shellGeo, shellMat);
+    const color = COLORS[type];
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const tip = new THREE.Mesh(shellGeo, mat);
     group.add(tip);
-    const trail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 2.6), trailMat);
-    trail.position.z = -1.4;
+    const trail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.8), trailMat);
+    trail.position.z = -1;
     group.add(trail);
     group.position.copy(origin);
     const q = new THREE.Quaternion().setFromUnitVectors(_up, _dir.copy(vel).normalize());
     group.quaternion.copy(q);
     scene.add(group);
-    shells.push({ group, vel, life: 3.2, owner, damage });
+    shells.push({ group, vel, life: 3.2, owner, damage, type });
   }
 
-  function updateShells(dt: number, allTanks: Tank[], obstacles: { box: THREE.Box3 }[], tankAimHeight: (t: Tank) => number, onHit: (target: Tank, damage: number, point: THREE.Vector3, attacker: Tank) => void, onHitGround: (point: THREE.Vector3) => void) {
+  function updateShells(dt: number, allTanks: Tank[], obstacles: { box: THREE.Box3 }[], tankAimHeight: (t: Tank) => number, onHit: (target: Tank, damage: number, point: THREE.Vector3, attacker: Tank, type: AmmoType) => void, onHitGround: (point: THREE.Vector3, type: AmmoType) => void) {
     for (let i = shells.length - 1; i >= 0; i--) {
       const s = shells[i];
       s.life -= dt;
@@ -74,14 +79,19 @@ export function createShellManager(scene: THREE.Scene, shellGeo: THREE.SphereGeo
       s.group.position.copy(hitPoint ?? _next);
       const consumed = hitPoint !== null;
       if (hitPoint) {
-        if (hitTarget) onHit(hitTarget, s.damage, hitPoint, s.owner);
-        else onHitGround(hitPoint);
+        if (hitTarget) onHit(hitTarget, s.damage, hitPoint, s.owner, s.type);
+        else onHitGround(hitPoint, s.type);
       }
 
       if (consumed || s.life <= 0) {
         scene.remove(s.group);
-        const trailMesh = s.group.children[1] as THREE.Mesh | undefined;
-        if (trailMesh?.geometry) trailMesh.geometry.dispose();
+        s.group.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.isMesh && m.material) {
+            const mats = Array.isArray(m.material) ? m.material : [m.material];
+            mats.forEach((x) => x.dispose());
+          }
+        });
         shells.splice(i, 1);
       }
     }

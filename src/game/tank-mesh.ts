@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { TankSpec } from "./tanks";
-import type { TankModel } from "../types";
 import { addBox, addCylinder } from "../utils/three-helpers";
 
 export interface TankMesh {
@@ -54,12 +53,17 @@ function armorGeometry(bottomWidth: number, topWidth: number, height: number, le
   return geo;
 }
 
-export function createTankMesh(spec: TankSpec, kind: "player" | "bot"): TankMesh {
+export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColorOverride?: number): TankMesh {
   const group = new THREE.Group();
-  const bodyColor = bodyColorFor(kind);
+  const bodyColor = bodyColorOverride ?? bodyColorFor(kind);
+  const darkMult = 0.55;
+  const edgeMult = 0.38;
+  const r = (bodyColor >> 16) & 0xff, g = (bodyColor >> 8) & 0xff, b = bodyColor & 0xff;
+  const bodyDark = (Math.round(r * darkMult) << 16) | (Math.round(g * darkMult) << 8) | Math.round(b * darkMult);
+  const edgeDark = (Math.round(r * edgeMult) << 16) | (Math.round(g * edgeMult) << 8) | Math.round(b * edgeMult);
   const matBody = makeStandard(bodyColor, 0.48, 0.38);
-  const matBodyDark = makeStandard(kind === "player" ? 0x145da7 : 0x861f24, 0.58, 0.4);
-  const matEdge = makeStandard(kind === "player" ? 0x0e477f : 0x68171b, 0.68, 0.35);
+  const matBodyDark = makeStandard(bodyDark, 0.58, 0.4);
+  const matEdge = makeStandard(edgeDark, 0.68, 0.35);
   const matTrack = makeStandard(TRACK_COLOR, 0.86, 0.55);
   const matRubber = makeStandard(0x111317, 0.95, 0.05);
   const matMetal = makeStandard(METAL_COLOR, 0.36, 0.78);

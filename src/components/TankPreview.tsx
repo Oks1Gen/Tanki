@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import type { TankModel } from "../types";
+import type { TankModel, CamoType } from "../types";
 import { TANK_SPECS, createTankMesh } from "../game/tanks";
 import { buildHangarFloor } from "./hangar/Floor";
 import { buildHangarWalls } from "./hangar/Walls";
 import { buildHangarLights } from "./hangar/Lights";
 import { buildTools } from "./hangar/Tools";
+import { CAMO_COLORS } from "../data/upgrades";
 
-export default function TankPreview({ tankModel }: { tankModel: TankModel }) {
+export default function TankPreview({ tankModel, camo }: { tankModel: TankModel; camo?: CamoType }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function TankPreview({ tankModel }: { tankModel: TankModel }) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.18;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -50,7 +51,8 @@ export default function TankPreview({ tankModel }: { tankModel: TankModel }) {
 
     const tankPivot = new THREE.Group();
     tankPivot.position.y = 0;
-    tankPivot.add(createTankMesh(spec, "player").group);
+    const bodyColor = camo ? (CAMO_COLORS[camo] || undefined) : undefined;
+    tankPivot.add(createTankMesh(spec, "player", bodyColor).group);
     scene.add(tankPivot);
 
     const stampMat = new THREE.MeshStandardMaterial({
@@ -107,11 +109,11 @@ export default function TankPreview({ tankModel }: { tankModel: TankModel }) {
 
     let raf = 0;
     let disposed = false;
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
     const render = () => {
       if (disposed) return;
       raf = requestAnimationFrame(render);
-      const dt = Math.min(clock.getDelta(), 0.1);
+      const dt = Math.min(timer.getDelta(), 0.1);
       idleTime += dt;
       if (!dragging) {
         const decay = Math.pow(0.001, dt);
@@ -150,7 +152,7 @@ export default function TankPreview({ tankModel }: { tankModel: TankModel }) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [tankModel]);
+  }, [tankModel, camo]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

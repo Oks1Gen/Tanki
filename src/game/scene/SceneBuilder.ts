@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { MAP_HALF } from "../../constants";
 import { addBox as addWorldBox } from "../../utils/three-helpers";
 import type { Obstacle } from "../GameTypes";
-import { forward, clamp } from "../GameMath";
+
 
 export class SceneBuilder {
   private scene: THREE.Scene;
@@ -205,6 +205,7 @@ export class SceneBuilder {
 
     const makeCrates = () => {
       const crates = new THREE.Group();
+      crates.userData.type = "crate";
       for (let i = 0; i < 4; i++) {
         const size = rand(1.45, 2.1);
         const x = (i % 2) * 1.7 - 0.85 + rand(-0.15, 0.15);

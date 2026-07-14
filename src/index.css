@@ -176,22 +176,40 @@ button {
   background: repeating-linear-gradient(135deg, #b6d94c 0 14px, #1c2416 14px 28px);
 }
 
-/* ---------- Range slider ---------- */
+/* ---------- Custom slider ---------- */
 .battle-range {
   appearance: none;
   height: 5px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--mil-green-bright) var(--range-progress), #26301b var(--range-progress));
+  outline: none;
+}
+
+.battle-range::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.battle-range::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
 }
 
 .battle-range::-webkit-slider-thumb {
   appearance: none;
   width: 18px;
   height: 18px;
+  margin-top: -6.5px;
   border: 3px solid #0b0f09;
   border-radius: 4px;
   background: var(--mil-lime);
-  box-shadow: 0 0 0 1px #86b23a, 0 0 16px rgba(182, 217, 76, 0.5);
+  box-shadow:
+    0 0 0 1px #86b23a,
+    0 0 16px rgba(182, 217, 76, 0.5);
+  cursor: pointer;
 }
 
 .battle-range::-moz-range-thumb {
@@ -200,6 +218,11 @@ button {
   border: 3px solid #0b0f09;
   border-radius: 4px;
   background: var(--mil-lime);
+  cursor: pointer;
+}
+
+.battle-range:focus-visible {
+  box-shadow: 0 0 0 2px var(--mil-lime);
 }
 
 @media (max-height: 720px) and (min-width: 1024px) {
