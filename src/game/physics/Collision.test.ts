@@ -1,6 +1,35 @@
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("three", () => {
+  class MockObject3D {
+    visible = true;
+    isObject3D = true;
+    id = 0; uuid = ""; name = ""; type = "Object3D";
+    parent: any = null; children: any[] = [];
+    position = { x: 0, y: 0, z: 0 };
+    rotation = { x: 0, y: 0, z: 0, set: () => {} };
+    quaternion = { x: 0, y: 0, z: 0, w: 1 };
+    scale = { x: 1, y: 1, z: 1 };
+    matrix = { identity: () => {}, elements: [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] };
+    matrixWorld = { identity: () => {}, elements: [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] };
+    up = { x: 0, y: 1, z: 0 };
+    renderOrder = 0; frustumCulled = true; layers: any = { mask: 1, test: () => true };
+    add() { return this; }
+    remove() { return this; }
+    traverse() {}
+    traverseVisible() {}
+    updateMatrix() {}
+    updateMatrixWorld() {}
+    rotateX() {} rotateY() {} rotateZ() {}
+    lookAt() {}
+    getWorldPosition() { return { x: 0, y: 0, z: 0 }; }
+    getWorldQuaternion() { return { x: 0, y: 0, z: 0, w: 1 }; }
+    getWorldScale() { return { x: 1, y: 1, z: 1 }; }
+    localToWorld() { return { x: 0, y: 0, z: 0 }; }
+    worldToLocal() { return { x: 0, y: 0, z: 0 }; }
+    dispatchEvent() {}
+    addEventListener() {} removeEventListener() {}
+  }
   class Vector3 {
     x: number; y: number; z: number;
     constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
@@ -30,16 +59,16 @@ vi.mock("three", () => {
         && p.z >= this.min.z && p.z <= this.max.z;
     }
   }
-  return { Vector3, Vector2, Box3 };
+  return { Vector3, Vector2, Box3, Object3D: MockObject3D };
 });
 
 import { resolveCollision, pointBlocked, lineOfSight } from "./Collision";
 
 function makeBox(minX: number, minZ: number, maxX: number, maxZ: number, minY = 0, maxY = 3) {
-  const { Vector3, Box3 } = require("three");
+  const { Vector3, Box3, Object3D } = require("three");
   return {
     box: new Box3(new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ)),
-    mesh: { visible: true },
+    mesh: new Object3D(),
   };
 }
 

@@ -179,50 +179,53 @@ button {
 /* ---------- Custom slider ---------- */
 .battle-range {
   appearance: none;
-  height: 5px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--mil-green-bright) var(--range-progress), #26301b var(--range-progress));
+  height: 6px;
+  border: 1px solid var(--mil-edge);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 5px, rgba(255,255,255,0.015) 5px 6px, transparent 6px 10px),
+    linear-gradient(90deg, var(--mil-green-bright) var(--range-progress), #161d12 var(--range-progress));
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
   outline: none;
 }
 
 .battle-range::-webkit-slider-runnable-track {
-  height: 5px;
-  border-radius: 999px;
+  height: 6px;
   background: transparent;
+  border: none;
 }
 
 .battle-range::-moz-range-track {
-  height: 5px;
-  border-radius: 999px;
+  height: 6px;
   background: transparent;
   border: none;
 }
 
 .battle-range::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -6.5px;
-  border: 3px solid #0b0f09;
-  border-radius: 4px;
-  background: var(--mil-lime);
-  box-shadow:
-    0 0 0 1px #86b23a,
-    0 0 16px rgba(182, 217, 76, 0.5);
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border: 2px solid var(--mil-lime);
+  border-radius: 0;
+  background: var(--mil-paper);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
   cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(182, 217, 76, 0.25), 0 0 14px rgba(182, 217, 76, 0.4);
 }
 
 .battle-range::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border: 3px solid #0b0f09;
-  border-radius: 4px;
-  background: var(--mil-lime);
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mil-lime);
+  border-radius: 0;
+  background: var(--mil-paper);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
   cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(182, 217, 76, 0.25), 0 0 14px rgba(182, 217, 76, 0.4);
 }
 
 .battle-range:focus-visible {
-  box-shadow: 0 0 0 2px var(--mil-lime);
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.6), 0 0 0 2px var(--mil-lime), 0 0 16px rgba(182, 217, 76, 0.3);
 }
 
 @media (max-height: 720px) and (min-width: 1024px) {

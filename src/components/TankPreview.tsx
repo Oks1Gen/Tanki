@@ -52,7 +52,7 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
     const tankPivot = new THREE.Group();
     tankPivot.position.y = 0;
     const bodyColor = camo ? (CAMO_COLORS[camo] || undefined) : undefined;
-    tankPivot.add(createTankMesh(spec, "player", bodyColor).group);
+    tankPivot.add(createTankMesh(spec, "player", bodyColor, camo || undefined).group);
     scene.add(tankPivot);
 
     const stampMat = new THREE.MeshStandardMaterial({
@@ -73,10 +73,9 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
 
     let dragging = false;
     let lastX = 0, lastY = 0;
-    let idleTime = 0;
-    let velYaw = 0, velPitch = 0, velDistance = 0;
+    let velYaw = 0, velPitch = 0;
     const onPointerDown = (e: PointerEvent) => {
-      dragging = true; lastX = e.clientX; lastY = e.clientY; idleTime = 0; velYaw = 0; velPitch = 0;
+      dragging = true; lastX = e.clientX; lastY = e.clientY; velYaw = 0; velPitch = 0;
       renderer.domElement.setPointerCapture(e.pointerId);
       renderer.domElement.style.cursor = "grabbing";
     };
@@ -84,7 +83,7 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
       if (!dragging) return;
       const dx = e.clientX - lastX, dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
-      velYaw = -dx * 0.0065; velPitch = dy * 0.0045;
+      velYaw = -dx * 0.003; velPitch = dy * 0.002;
       yaw += velYaw; pitch = Math.max(0.02, Math.min(0.55, pitch + velPitch));
     };
     const onPointerUp = (e: PointerEvent) => {
@@ -92,7 +91,7 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
       if (renderer.domElement.hasPointerCapture(e.pointerId)) renderer.domElement.releasePointerCapture(e.pointerId);
       renderer.domElement.style.cursor = "grab";
     };
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); velDistance += e.deltaY * 0.012; };
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); distance = Math.max(6, Math.min(20, distance + e.deltaY * 0.005)); };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerup", onPointerUp);
@@ -114,15 +113,12 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
       if (disposed) return;
       raf = requestAnimationFrame(render);
       const dt = Math.min(timer.getDelta(), 0.1);
-      idleTime += dt;
       if (!dragging) {
         const decay = Math.pow(0.001, dt);
         velYaw *= decay; velPitch *= decay;
         yaw += velYaw; pitch = Math.max(0.02, Math.min(0.55, pitch + velPitch));
-        if (idleTime > 1.6 && Math.abs(velYaw) < 0.0008) yaw += dt * 0.08;
+        yaw += dt * 0.15;
       }
-      velDistance *= Math.pow(0.001, dt);
-      distance = Math.max(6, Math.min(20, distance + velDistance));
       const cp = Math.cos(pitch), sp = Math.sin(pitch);
       camera.position.set(Math.sin(yaw) * cp * distance, target.y + sp * distance + 2.0, Math.cos(yaw) * cp * distance);
       camera.lookAt(target);

@@ -102,7 +102,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                   <button key={id} onClick={() => !locked && setTank(id)} disabled={locked}
                     className={`relative min-w-0 px-4 py-3 text-left transition-colors sm:px-5 sm:py-4 ${index > 0 ? "border-l border-lime-900/50" : ""} ${active ? "bg-lime-900/25" : locked ? "opacity-40 cursor-not-allowed" : "hover:bg-lime-400/[0.05]"}`}>
                     <span className={`absolute inset-x-0 top-0 h-0.5 ${active ? "bg-lime-400" : "bg-transparent"}`} />
-                    <span className={`stencil block text-base sm:text-lg ${active ? "text-lime-50" : locked ? "text-zinc-500" : "text-lime-200/60"}`}>{locked ? "\u{1F512} " : ""}{item.name}</span>
+                    <span className={`stencil block text-base sm:text-lg ${active ? "text-lime-50" : locked ? "text-zinc-500" : "text-lime-200/60"}`}>{locked ? "закр. " : ""}{item.name}</span>
                     <span className="mono mt-0.5 block truncate text-[10px] uppercase tracking-[0.12em] text-lime-700/70">{locked && unlockReq?.xpCost ? `${unlockReq.xpCost} опыта` : item.role}</span>
                   </button>
                 );
@@ -144,17 +144,21 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                 </section>
 
                 {/* Camo */}
-                {progress.purchasedCamos.length > 0 && (
-                  <section className="shrink-0 mt-5 border-t border-lime-900/50 pt-4">
-                    <span className="ui-kicker">Камуфляжное покрытие</span>
-                    <div className="mt-2 flex gap-2">
-                      <button onClick={() => onBuy("equipCamo_")} className={`h-7 w-7 rounded border ${progress.equippedCamo === "" ? "border-lime-400 ring-1 ring-lime-400" : "border-lime-900/50"} bg-[#278fe8]`} title="Стандарт" />
-                      {progress.purchasedCamos.map((c) => (
-                        <button key={c} onClick={() => onBuy("equipCamo_" + c)} className={`h-7 w-7 rounded border ${progress.equippedCamo === c ? "border-lime-400 ring-1 ring-lime-400" : "border-lime-900/50"}`} style={{ background: `#${CAMO_COLORS[c].toString(16).padStart(6, "0")}` }} title={c === "forest" ? "Лес" : c === "desert" ? "Пустыня" : "Зима"} />
-                      ))}
-                    </div>
-                  </section>
-                )}
+                <section className="shrink-0 mt-5 border-t border-lime-900/50 pt-4">
+                  <span className="ui-kicker">Камуфляжное покрытие</span>
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => onBuy("equipCamo_")} className={`h-7 w-7 rounded border ${progress.equippedCamo === "" ? "border-lime-400 ring-1 ring-lime-400" : "border-lime-900/50"} bg-[#278fe8]`} title="Стандарт" />
+                    {CAMO_ITEMS.map((c) => {
+                      const owned = progress.purchasedCamos.includes(c.type);
+                      return (
+                        <button key={c.type} onClick={() => owned && onBuy("equipCamo_" + c.type)} disabled={!owned}
+                          className={`h-7 w-7 rounded border ${!owned ? "border-zinc-700 opacity-40 cursor-not-allowed" : progress.equippedCamo === c.type ? "border-lime-400 ring-1 ring-lime-400" : "border-lime-900/50"}`}
+                          style={{ background: `#${CAMO_COLORS[c.type].toString(16).padStart(6, "0")}` }}
+                          title={owned ? c.label : c.label + " (закр.)"} />
+                      );
+                    })}
+                  </div>
+                </section>
 
                 {/* Stats */}
                 <section className="menu-low-priority mt-5 shrink-0 border-t border-lime-900/50 pt-4">
@@ -226,10 +230,10 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
-                              {!maxed && canAccel && <button onClick={() => onBuy("accelerate_" + u.id)} className="px-2 py-1 stencil text-[8px] rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60" title={`Ускорить за ${goldForAccel} золота`}>{goldForAccel}\uD83E\uDE99</button>}
+                              {!maxed && canAccel && <button onClick={() => onBuy("accelerate_" + u.id)} className="px-2 py-1 stencil text-[8px] rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60" title={`Ускорить за ${goldForAccel} золота`}>{goldForAccel}G</button>}
                               <button onClick={() => onBuy(u.id)} disabled={maxed || !canBuy}
                                 className={`px-2 py-1 stencil text-[9px] rounded transition-colors ${maxed ? "bg-lime-900/30 text-lime-600 cursor-default" : canBuy ? "bg-lime-700/50 text-lime-300 hover:bg-lime-700/70" : "bg-zinc-800/50 text-zinc-600 cursor-not-allowed"}`}>
-                                {maxed ? "MAX" : canBuy ? `${nextCost} XP` : `${nextCost} XP\u{1F512}`}
+                                {maxed ? "MAX" : canBuy ? `${nextCost} XP` : `${nextCost} XP`}
                               </button>
                             </div>
                           </div>
@@ -253,7 +257,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                             </div>
                             <button onClick={() => onBuy("gold_" + g.id)} disabled={progress.gold < g.goldCost}
                               className={`shrink-0 px-2 py-1 stencil text-[9px] rounded transition-colors ${progress.gold >= g.goldCost ? "bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700/70" : "bg-zinc-800/50 text-zinc-600 cursor-not-allowed"}`}>
-                              {g.goldCost} \uD83E\uDE99
+                              {g.goldCost} G
                             </button>
                           </div>
                         </div>
@@ -272,8 +276,8 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                             className={`flex items-center gap-2 border rounded px-2.5 py-1.5 text-[10px] transition-colors ${owned ? "border-lime-900/50 bg-lime-900/10" : "border-yellow-900/50 bg-black/30 hover:border-yellow-700/50"}`}>
                             <span className="h-4 w-4 rounded block shrink-0" style={{ background: `#${CAMO_COLORS[c.type].toString(16).padStart(6, "0")}` }} />
                             <span className={owned ? "text-lime-400" : "text-lime-200/60"}>{c.label}</span>
-                            {!owned && <span className="text-yellow-500">{c.goldCost}\uD83E\uDE99</span>}
-                            {owned && <span className="text-lime-400">\u2713</span>}
+                            {!owned && <span className="text-yellow-500">{c.goldCost}G</span>}
+                            {owned && <span className="text-lime-400">есть</span>}
                           </button>
                         );
                       })}
@@ -288,7 +292,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                         const unlocked = progress.unlockedTanks.includes(u.model);
                         return (
                           <div key={u.model} className="flex items-center justify-between mono text-[10px] border-b border-lime-900/30 pb-1.5">
-                            <span className={unlocked ? "text-lime-300" : "text-zinc-500"}>{unlocked ? "\u2713" : "\u{1F512}"} {u.name}</span>
+                            <span className={unlocked ? "text-lime-300" : "text-zinc-500"}>{unlocked ? "открыт" : "закр."} {u.name}</span>
                             <span className={unlocked ? "text-lime-400" : "text-yellow-600"}>{unlocked ? "Открыт" : `${u.xpCost} XP`}</span>
                           </div>
                         );

@@ -22,7 +22,7 @@ export function createShellManager(scene: THREE.Scene, shellGeo: THREE.SphereGeo
     const mat = new THREE.MeshBasicMaterial({ color });
     const tip = new THREE.Mesh(shellGeo, mat);
     group.add(tip);
-    const trail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.8), trailMat);
+    const trail = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1.8), trailMat.clone());
     trail.position.z = -1;
     group.add(trail);
     group.position.copy(origin);

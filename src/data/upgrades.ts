@@ -82,7 +82,7 @@ export const CAMO_COLORS: Record<CamoType, number> = {
   "": 0x278fe8,
   forest: 0x3d6b2e,
   desert: 0x9a8b4a,
-  winter: 0xb8bcc0,
+  winter: 0xf0f0f0,
 };
 
 export const CAMO_ITEMS: { type: CamoType; label: string; goldCost: number }[] = [

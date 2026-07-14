@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { GameSettings, GameResult, HudState, AmmoType, AmmoState } from "../types";
+import type { GameSettings, GameResult, HudState, AmmoType, AmmoState, CamoType } from "../types";
 import { TANK_ORDER, TANK_SPECS, createTankMesh } from "./tanks";
 import type { TankSpec } from "./tanks";
 import { MAP_HALF, RECOIL, FIRE_RANGE } from "../constants";
@@ -116,8 +116,8 @@ export class TankGame {
 
   // ---- tank creation ----
 
-  private makeTank(spec: TankSpec, kind: "player" | "bot", bodyColor?: number): Tank {
-    const mesh = createTankMesh(spec, kind, bodyColor);
+  private makeTank(spec: TankSpec, kind: "player" | "bot", bodyColor?: number, camoType?: CamoType): Tank {
+    const mesh = createTankMesh(spec, kind, bodyColor, camoType);
     const ammo: AmmoState = { ap: 18, heat: 10, he: 8, current: "ap" };
     return {
       spec, mesh, hullAngle: 0, turretAngle: 0, velocity: 0,
@@ -200,8 +200,8 @@ export class TankGame {
 
   private spawnTanks() {
     const playerSpec = TANK_SPECS[this.settings.tankModel];
-    const playerCamo = this.settings.camo ? (CAMO_COLORS[this.settings.camo] || undefined) : undefined;
-    const player = this.makeTank(playerSpec, "player", playerCamo);
+    const playerCamoColor = this.settings.camo ? (CAMO_COLORS[this.settings.camo] || undefined) : undefined;
+    const player = this.makeTank(playerSpec, "player", playerCamoColor, this.settings.camo);
     player.mesh.group.position.set(0, 0, 0);
     player.hullAngle = Math.PI;
     this.scene.add(player.mesh.group);
@@ -301,6 +301,7 @@ export class TankGame {
   // ---- loop ----
 
   start() {
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = 0; }
     this.timer.getDelta();
     const loop = () => {
       if (this.disposed) return;
@@ -622,7 +623,8 @@ export class TankGame {
 
   private getAmmoType(t: Tank): AmmoType {
     if (!t.isPlayer) return ["ap", "heat", "he"][Math.floor(Math.random() * 3)] as AmmoType;
-    return t.ammo.current;
+    const valid: AmmoType[] = ["ap", "heat", "he"];
+    return valid.includes(t.ammo.current) ? t.ammo.current : "ap";
   }
 
   private fireTank(t: Tank, target?: Tank) {
@@ -815,10 +817,17 @@ export class TankGame {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.raf = 0;
     this.unbindEvents();
     if (document.pointerLockElement) document.exitPointerLock();
-    for (const c of this.craters) this.scene.remove(c);
+    for (const c of this.craters) { this.scene.remove(c); c.geometry.dispose(); }
     this.craters.length = 0;
+    this.shellGeo?.dispose();
+    this.shellMat?.dispose();
+    this.trailMat?.dispose();
+    this.sparkGeo?.dispose();
+    this.flashGeo?.dispose();
+    this.craterMat?.dispose();
     disposeScene(this.scene);
     this.renderer.dispose();
   }

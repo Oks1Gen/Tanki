@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import type { TankSpec } from "./tanks";
+import type { CamoType } from "../types";
+import { CAMO_COLORS } from "../data/upgrades";
 import { addBox, addCylinder } from "../utils/three-helpers";
 
 export interface TankMesh {
@@ -53,7 +55,64 @@ function armorGeometry(bottomWidth: number, topWidth: number, height: number, le
   return geo;
 }
 
-export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColorOverride?: number): TankMesh {
+function generateCamoTexture(camoType: CamoType): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const baseColor = CAMO_COLORS[camoType] || 0x278fe8;
+  const r = (baseColor >> 16) & 0xff, g = (baseColor >> 8) & 0xff, b = baseColor & 0xff;
+
+  let palette: [number, number, number][];
+  switch (camoType) {
+    case "forest":
+      palette = [[r, g, b], [Math.round(r * 0.6), Math.round(g * 0.82), Math.round(b * 0.55)], [Math.round(r * 0.78), Math.round(g * 0.7), Math.round(b * 0.45)]];
+      break;
+    case "desert":
+      palette = [[r, g, b], [Math.round(r * 0.82), Math.round(g * 0.76), Math.round(b * 0.58)], [Math.round(r * 0.7), Math.round(g * 0.58), Math.round(b * 0.42)]];
+      break;
+    case "winter":
+      palette = [[r, g, b], [Math.min(255, r - 25), Math.min(255, g - 25), Math.min(255, b - 25)], [Math.round(r * 0.82), Math.round(g * 0.82), Math.round(b * 0.82)]];
+      break;
+    default:
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(0, 0, size, size);
+      const tex0 = new THREE.CanvasTexture(canvas);
+      tex0.wrapS = tex0.wrapT = THREE.RepeatWrapping;
+      tex0.repeat.set(2, 2);
+      return tex0;
+  }
+
+  ctx.fillStyle = `rgb(${palette[0][0]},${palette[0][1]},${palette[0][2]})`;
+  ctx.fillRect(0, 0, size, size);
+
+  for (let pi = 1; pi < palette.length; pi++) {
+    const [pr, pg, pb] = palette[pi];
+    ctx.fillStyle = `rgb(${pr},${pg},${pb})`;
+    for (let i = 0; i < 14; i++) {
+      const cx = Math.random() * size, cy = Math.random() * size;
+      const pts = 8 + Math.floor(Math.random() * 8);
+      const baseR = 35 + Math.random() * 75;
+      ctx.beginPath();
+      for (let j = 0; j <= pts; j++) {
+        const a = (j / pts) * Math.PI * 2, v = 0.55 + Math.random() * 0.45;
+        const px = cx + baseR * v * Math.cos(a), py = cy + baseR * v * Math.sin(a);
+        j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  tex.anisotropy = 4;
+  return tex;
+}
+
+export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColorOverride?: number, camoType?: CamoType): TankMesh {
   const group = new THREE.Group();
   const bodyColor = bodyColorOverride ?? bodyColorFor(kind);
   const darkMult = 0.55;
@@ -64,6 +123,13 @@ export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColor
   const matBody = makeStandard(bodyColor, 0.48, 0.38);
   const matBodyDark = makeStandard(bodyDark, 0.58, 0.4);
   const matEdge = makeStandard(edgeDark, 0.68, 0.35);
+  if (camoType) {
+    const tex = generateCamoTexture(camoType);
+    matBody.map = tex;
+    matBody.needsUpdate = true;
+    matBodyDark.map = tex;
+    matBodyDark.needsUpdate = true;
+  }
   const matTrack = makeStandard(TRACK_COLOR, 0.86, 0.55);
   const matRubber = makeStandard(0x111317, 0.95, 0.05);
   const matMetal = makeStandard(METAL_COLOR, 0.36, 0.78);
