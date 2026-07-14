@@ -1,0 +1,215 @@
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Share+Tech+Mono&display=swap");
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family: "Oswald", "Arial Narrow", "Roboto Condensed", Inter, system-ui, sans-serif;
+  background: #0b0f09;
+
+  /* Military green palette (various tones) */
+  --mil-black: #0b0f09;
+  --mil-paper: #161d12;
+  --mil-paper-2: #1c2416;
+  --mil-edge: #34432a;
+  --mil-line: #3f5a24;
+  --mil-olive: #4d6a24;
+  --mil-green: #5f8a2e;
+  --mil-green-bright: #86b23a;
+  --mil-lime: #b6d94c;
+  --mil-khaki: #c9cf9e;
+  --mil-text: #e7ecd6;
+  --mil-amber: #d7a53a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ---------- Panels ---------- */
+.ui-panel {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--mil-edge);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.012) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, rgba(150, 190, 90, 0.05), transparent 34%),
+    var(--mil-paper);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(180, 220, 120, 0.05),
+    inset 0 0 0 3px var(--mil-line);
+}
+
+.ui-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(140% 100% at 0% 0%, rgba(134, 178, 58, 0.1), transparent 60%),
+    radial-gradient(120% 90% at 100% 100%, rgba(63, 90, 36, 0.16), transparent 60%);
+  z-index: -1;
+}
+
+.ui-panel::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed rgba(182, 217, 76, 0.1);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ui-kicker {
+  color: var(--mil-lime);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ---------- Buttons ---------- */
+.ui-button-primary {
+  border: 1px solid var(--mil-green-bright);
+  background: linear-gradient(180deg, #6f9c33, #3f5a1e);
+  color: #f4f7e6;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 28px rgba(63, 90, 36, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+
+.ui-button-primary:hover {
+  filter: brightness(1.16);
+  box-shadow: 0 14px 34px rgba(95, 138, 46, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.ui-button-primary:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+.ui-button-secondary {
+  border: 1px solid var(--mil-edge);
+  background: rgba(28, 36, 22, 0.9);
+  color: var(--mil-text);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.ui-button-secondary:hover {
+  border-color: var(--mil-green-bright);
+  background: rgba(40, 52, 30, 0.96);
+}
+
+/* ---------- HUD ---------- */
+/* NOTE: no `position` here — Tailwind's `absolute` must win so panels stay compact. */
+.hud-panel {
+  border: 1px solid rgba(120, 150, 80, 0.4);
+  background:
+    repeating-linear-gradient(135deg, rgba(180, 220, 120, 0.014) 0 6px, transparent 6px 12px),
+    linear-gradient(135deg, rgba(22, 29, 18, 0.95), rgba(9, 12, 7, 0.85));
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.4),
+    inset 3px 0 0 rgba(134, 178, 58, 0.85),
+    inset 0 0 0 1px rgba(180, 220, 120, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+.hud-corner {
+  position: relative;
+}
+
+.hud-corner::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid rgba(182, 217, 76, 0.75);
+  border-right: 1px solid rgba(182, 217, 76, 0.75);
+}
+
+.hud-corner::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 1px solid rgba(182, 217, 76, 0.75);
+  border-left: 1px solid rgba(182, 217, 76, 0.75);
+}
+
+/* ---------- Type helpers ---------- */
+.mono {
+  font-family: "Share Tech Mono", "Oswald", "Arial Narrow", monospace;
+  letter-spacing: 0.04em;
+}
+
+.stencil {
+  font-family: "Oswald", "Arial Narrow", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.hazard-stripes {
+  background: repeating-linear-gradient(135deg, #b6d94c 0 14px, #1c2416 14px 28px);
+}
+
+/* ---------- Range slider ---------- */
+.battle-range {
+  appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mil-green-bright) var(--range-progress), #26301b var(--range-progress));
+}
+
+.battle-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #0b0f09;
+  border-radius: 4px;
+  background: var(--mil-lime);
+  box-shadow: 0 0 0 1px #86b23a, 0 0 16px rgba(182, 217, 76, 0.5);
+}
+
+.battle-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #0b0f09;
+  border-radius: 4px;
+  background: var(--mil-lime);
+}
+
+@media (max-height: 720px) and (min-width: 1024px) {
+  .menu-low-priority {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  body {
+    overflow: auto;
+  }
+}
