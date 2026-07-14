@@ -302,10 +302,11 @@ export class TankGame {
 
   start() {
     if (this.raf) { cancelAnimationFrame(this.raf); this.raf = 0; }
-    this.timer.getDelta();
-    const loop = () => {
+    this.timer.update();
+    const loop = (timestamp?: number) => {
       if (this.disposed) return;
       this.raf = requestAnimationFrame(loop);
+      this.timer.update(timestamp);
       const dt = Math.min(this.timer.getDelta(), 0.05);
       this.update(dt);
       this.renderer.render(this.scene, this.camera);
