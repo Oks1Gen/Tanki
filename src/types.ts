@@ -11,13 +11,16 @@ export interface HudState {
   botsAlive: number;
   botsTotal: number;
   kills: number;
-  reloadPct: number; // 0..1, 1 = ready
+  reloadPct: number;
   ready: boolean;
   speedKmh: number;
-  hullHeadingDeg: number; // 0 = north (+Z), clockwise
+  hullHeadingDeg: number;
   turretHeadingDeg: number;
   barrelPitchDeg: number;
-  damageFlash: number; // 0..1 transient
+  damageFlash: number;
+  targetName: string;
+  targetHealth: number;
+  targetMaxHealth: number;
 }
 
 export type GameResult = "win" | "lose" | null;

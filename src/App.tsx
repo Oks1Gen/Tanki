@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { GameSettings } from "./types";
 import Menu from "./components/Menu";
 import GameView from "./components/GameView";
+import ErrorBoundary from "./errors/ErrorBoundary";
 
 export default function App() {
   const [screen, setScreen] = useState<"menu" | "game">("menu");
@@ -16,12 +17,13 @@ export default function App() {
 
   if (screen === "game" && settings) {
     return (
-      <GameView
-        key={runId}
-        settings={settings}
-        onExit={() => setScreen("menu")}
-        onRestart={() => setRunId((n) => n + 1)}
-      />
+      <ErrorBoundary key={runId}>
+        <GameView
+          settings={settings}
+          onExit={() => setScreen("menu")}
+          onRestart={() => setRunId((n) => n + 1)}
+        />
+      </ErrorBoundary>
     );
   }
 
