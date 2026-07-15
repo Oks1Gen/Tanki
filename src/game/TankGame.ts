@@ -119,7 +119,7 @@ export class TankGame {
   // ---- tank creation ----
 
   private makeTank(spec: TankSpec, kind: "player" | "bot", bodyColor?: number, camoType?: CamoType): Tank {
-    const mesh = createTankMesh(spec, kind, bodyColor, camoType);
+    const mesh = createTankMesh(spec, kind, bodyColor, camoType, kind === "player");
     const ammo: AmmoState = { ap: 18, heat: 10, he: 8, current: "ap" };
     return {
       spec, mesh, hullAngle: 0, turretAngle: 0, velocity: 0,
@@ -531,7 +531,9 @@ export class TankGame {
     if (b.aiTimer <= 0) { b.aiTimer = 1.2 + Math.random() * 2.2; b.aiWander = (Math.random() - 0.5) * (b.blocked > 0 ? 1.6 : 0.5); }
 
     const desiredTurret = Math.atan2(target.mesh.group.position.x - bp.x, target.mesh.group.position.z - bp.z);
-    b.turretAngle = desiredTurret - b.hullAngle;
+    const worldTurretCur = b.hullAngle + b.turretAngle;
+    const worldTurretNext = rotateToward(worldTurretCur, desiredTurret, b.spec.turretRotSpeed * b.turretRotMul * dt);
+    b.turretAngle = worldTurretNext - b.hullAngle;
     b.barrelPitch = clamp(-Math.atan2(this.tankAimHeight(target) - this.tankAimHeight(b), Math.max(1, dist)), -0.42, 0.32);
 
     const engage = 26;

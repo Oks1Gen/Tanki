@@ -33,7 +33,7 @@ export const TANK_SPECS: Record<TankModel, TankSpec> = {
     turret: { type: "box", radius: 2.2, width: 3.7, length: 4.4, height: 1.35 },
     barrel: { length: 4.8, radius: 0.45 },
     stats: { armor: 0.95, speed: 0.25, damage: 0.95, reload: 0.2 },
-    maxSpeed: 9, rotSpeed: 0.75, turretRotSpeed: 1.0, reloadTime: 3.4, shellSpeed: 70, damage: 190, maxHealth: 2900, magazineSize: 1,
+    maxSpeed: 9, rotSpeed: 0.75, turretRotSpeed: 1.0, reloadTime: 3.4, shellSpeed: 70, damage: 380, maxHealth: 2900, magazineSize: 1,
   },
   t34: {
     id: "t34", name: "Т-34", role: "Средний танк",
@@ -42,7 +42,7 @@ export const TANK_SPECS: Record<TankModel, TankSpec> = {
     turret: { type: "round", radius: 1.55, width: 3.0, length: 3.0, height: 0.95 },
     barrel: { length: 3.7, radius: 0.23 },
     stats: { armor: 0.55, speed: 0.62, damage: 0.6, reload: 0.55 },
-    maxSpeed: 16, rotSpeed: 1.5, turretRotSpeed: 2.1, reloadTime: 2.1, shellSpeed: 88, damage: 120, maxHealth: 1500, magazineSize: 1,
+    maxSpeed: 16, rotSpeed: 1.5, turretRotSpeed: 2.1, reloadTime: 2.1, shellSpeed: 88, damage: 240, maxHealth: 1500, magazineSize: 1,
   },
   t100lt: {
     id: "t100lt", name: "Т-100 ЛТ", role: "Лёгкий танк",
@@ -51,7 +51,7 @@ export const TANK_SPECS: Record<TankModel, TankSpec> = {
     turret: { type: "flat", radius: 1.4, width: 2.3, length: 2.7, height: 0.62 },
     barrel: { length: 4.0, radius: 0.16 },
     stats: { armor: 0.3, speed: 0.95, damage: 0.4, reload: 0.9 },
-    maxSpeed: 27, rotSpeed: 2.1, turretRotSpeed: 3.1, reloadTime: 1.35, shellSpeed: 102, damage: 85, maxHealth: 950, magazineSize: 1,
+    maxSpeed: 27, rotSpeed: 2.1, turretRotSpeed: 3.1, reloadTime: 1.35, shellSpeed: 102, damage: 170, maxHealth: 950, magazineSize: 1,
   },
 };
 

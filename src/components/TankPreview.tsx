@@ -63,14 +63,6 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
     const innerStamp = new THREE.Mesh(new THREE.RingGeometry(2.6, 2.7, 48), stampMat);
     innerStamp.rotation.x = -Math.PI / 2; innerStamp.position.y = 0.02; scene.add(innerStamp);
 
-    const beacon = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 14, 12),
-      new THREE.MeshStandardMaterial({ color: 0xff7a18, emissive: 0xff4500, emissiveIntensity: 1.2, roughness: 0.2 }),
-    );
-    beacon.position.set(0, 5.6, 0); scene.add(beacon);
-    const beaconLight = new THREE.PointLight(0xff6a00, 8, 10, 2);
-    beaconLight.position.copy(beacon.position); scene.add(beaconLight);
-
     let dragging = false;
     let lastX = 0, lastY = 0;
     let velYaw = 0, velPitch = 0;
@@ -122,8 +114,6 @@ export default function TankPreview({ tankModel, camo }: { tankModel: TankModel;
       const cp = Math.cos(pitch), sp = Math.sin(pitch);
       camera.position.set(Math.sin(yaw) * cp * distance, target.y + sp * distance + 2.0, Math.cos(yaw) * cp * distance);
       camera.lookAt(target);
-      const pulse = 0.7 + Math.sin(Date.now() * 0.008) * 0.4;
-      beaconLight.intensity = 6 + pulse * 6;
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(render);

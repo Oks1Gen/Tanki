@@ -24,7 +24,7 @@ function StatBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default function Menu({ progress, onStart, onBuy }: { progress: PlayerProgress; onStart: (settings: GameSettings) => void; onBuy: (id: string) => void }) {
+export default function Menu({ progress, onStart, onBuy, onUnlock }: { progress: PlayerProgress; onStart: (settings: GameSettings) => void; onBuy: (id: string, tank?: TankModel) => void; onUnlock: (model: TankModel) => void }) {
   const [tank, setTank] = useState<TankModel>(progress.unlockedTanks.includes("t34") ? "t34" : progress.unlockedTanks[0]);
   const [bots, setBots] = useState(5);
   const [tab, setTab] = useState<"specs" | "research">("specs");
@@ -32,6 +32,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
   const setBotCount = (count: number) => setBots(Math.max(1, Math.min(12, count)));
   const rangeStyle = { "--range-progress": `${((bots - 1) / 11) * 100}%` } as CSSProperties;
   const tankLocked = !progress.unlockedTanks.includes(tank);
+  const tankUp = progress.upgrades[tank] || {};
   const availableGoldUpgrades = GOLD_UPGRADES.filter((g) => g.tankModel === tank && !progress.goldUpgrades[g.id]);
 
   return (
@@ -99,11 +100,11 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                 const unlockReq = TANK_UNLOCKS.find((u) => u.model === id);
                 const active = id === tank;
                 return (
-                  <button key={id} onClick={() => !locked && setTank(id)} disabled={locked}
-                    className={`relative min-w-0 px-4 py-3 text-left transition-colors sm:px-5 sm:py-4 ${index > 0 ? "border-l border-lime-900/50" : ""} ${active ? "bg-lime-900/25" : locked ? "opacity-40 cursor-not-allowed" : "hover:bg-lime-400/[0.05]"}`}>
+                  <button key={id} onClick={() => setTank(id)}
+                    className={`relative min-w-0 px-4 py-3 text-left transition-colors sm:px-5 sm:py-4 ${index > 0 ? "border-l border-lime-900/50" : ""} ${active ? "bg-lime-900/25" : locked ? "opacity-70 hover:bg-yellow-900/10 cursor-pointer" : "hover:bg-lime-400/[0.05]"}`}>
                     <span className={`absolute inset-x-0 top-0 h-0.5 ${active ? "bg-lime-400" : "bg-transparent"}`} />
-                    <span className={`stencil block text-base sm:text-lg ${active ? "text-lime-50" : locked ? "text-zinc-500" : "text-lime-200/60"}`}>{locked ? "закр. " : ""}{item.name}</span>
-                    <span className="mono mt-0.5 block truncate text-[10px] uppercase tracking-[0.12em] text-lime-700/70">{locked && unlockReq?.xpCost ? `${unlockReq.xpCost} опыта` : item.role}</span>
+                    <span className={`stencil block text-base sm:text-lg ${active ? "text-lime-50" : locked ? "text-yellow-200/70" : "text-lime-200/60"}`}>{locked ? "закр. " : ""}{item.name}</span>
+                    <span className="mono mt-0.5 block truncate text-[10px] uppercase tracking-[0.12em] text-lime-700/70">{locked && unlockReq?.xpCost ? `открыть · ${unlockReq.xpCost} опыта` : item.role}</span>
                   </button>
                 );
               })}
@@ -119,7 +120,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
             </div>
 
             {/* Start button pinned top */}
-            <button onClick={() => onStart({ tankModel: tank, botCount: bots, upgrades: progress.upgrades, goldUpgrades: progress.goldUpgrades, camo: progress.equippedCamo })}
+            <button onClick={() => onStart({ tankModel: tank, botCount: bots, upgrades: progress.upgrades[tank] || {}, goldUpgrades: progress.goldUpgrades, camo: progress.equippedCamo })}
               disabled={tankLocked}
               className={`ui-button-primary mt-3 flex w-full shrink-0 items-center justify-center gap-3 px-6 py-4 stencil text-sm ${tankLocked ? "opacity-40 cursor-not-allowed" : ""}`}>
               <span className="h-2 w-2 bg-lime-300 shadow-[0_0_10px_#b6d94c]" />
@@ -210,17 +211,22 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                   <h2 className="stencil mt-1 text-xl">Исследования</h2>
                   <p className="mt-2 text-[10px] leading-relaxed text-lime-600/80">Убийство: <span className="text-lime-300">100 XP</span> · Урон: <span className="text-lime-300">1/10 HP</span> · Победа: <span className="text-lime-300">×1.5</span> · Выживание: <span className="text-lime-300">×1.2</span></p>
 
-                  {/* XP upgrades */}
+                  {/* XP upgrades (per selected tank) */}
                   <div className="mt-4 space-y-2">
+                    {tankLocked && (
+                      <div className="rounded border border-yellow-900/50 bg-yellow-900/10 px-3 py-2 text-[9px] text-yellow-300/90">
+                        Сначала откройте «{spec.name}» в разделе «Открытие техники» ниже, чтобы исследовать его улучшения.
+                      </div>
+                    )}
                     {UPGRADES.map((u) => {
-                      const level = progress.upgrades[u.id] || 0;
+                      const level = tankUp[u.id] || 0;
                       const maxed = level >= u.maxLevel;
                       const nextCost = maxed ? 0 : u.levels[level].xpCost;
-                      const canBuy = !maxed && progress.xp >= nextCost;
+                      const canBuy = !maxed && !tankLocked && progress.xp >= nextCost;
                       const goldForAccel = Math.ceil(nextCost / 10);
-                      const canAccel = !maxed && progress.gold >= goldForAccel;
+                      const canAccel = !maxed && !tankLocked && progress.gold >= goldForAccel;
                       return (
-                        <div key={u.id} className={`border border-lime-900/50 bg-black/30 rounded px-3 py-2 ${maxed ? "opacity-50" : ""}`}>
+                        <div key={u.id} className={`border border-lime-900/50 bg-black/30 rounded px-3 py-2 ${maxed || tankLocked ? "opacity-50" : ""}`}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0 shrink-1">
                               <span className="text-sm shrink-0">{u.icon}</span>
@@ -230,10 +236,10 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
-                              {!maxed && canAccel && <button onClick={() => onBuy("accelerate_" + u.id)} className="px-2 py-1 stencil text-[8px] rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60" title={`Ускорить за ${goldForAccel} золота`}>{goldForAccel}G</button>}
-                              <button onClick={() => onBuy(u.id)} disabled={maxed || !canBuy}
+                              {!maxed && canAccel && <button onClick={() => onBuy("accelerate_" + u.id, tank)} className="px-2 py-1 stencil text-[8px] rounded bg-yellow-800/40 text-yellow-400 hover:bg-yellow-800/60" title={`Ускорить за ${goldForAccel} золота`}>{goldForAccel}G</button>}
+                              <button onClick={() => onBuy(u.id, tank)} disabled={maxed || !canBuy}
                                 className={`px-2 py-1 stencil text-[9px] rounded transition-colors ${maxed ? "bg-lime-900/30 text-lime-600 cursor-default" : canBuy ? "bg-lime-700/50 text-lime-300 hover:bg-lime-700/70" : "bg-zinc-800/50 text-zinc-600 cursor-not-allowed"}`}>
-                                {maxed ? "MAX" : canBuy ? `${nextCost} XP` : `${nextCost} XP`}
+                                {maxed ? "MAX" : `${nextCost} XP`}
                               </button>
                             </div>
                           </div>
@@ -244,7 +250,7 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                   </div>
 
                   {/* Gold upgrades */}
-                  {availableGoldUpgrades.length > 0 && (
+                  {!tankLocked && availableGoldUpgrades.length > 0 && (
                     <div className="mt-5 space-y-2">
                       <h3 className="stencil text-sm text-yellow-400/90">Золотые улучшения</h3>
                       {availableGoldUpgrades.map((g) => (
@@ -287,13 +293,24 @@ export default function Menu({ progress, onStart, onBuy }: { progress: PlayerPro
                   {/* Tank unlocks */}
                   <div className="mt-5 border-t border-lime-900/50 pt-4">
                     <span className="ui-kicker">Открытие техники</span>
+                    <p className="mt-1 text-[9px] leading-relaxed text-lime-600/80">Танки открываются только за потраченный опыт. У каждого танка — своя ветка исследований.</p>
                     <div className="mt-3 space-y-1.5">
-                      {TANK_UNLOCKS.filter((u) => u.xpCost > 0).map((u) => {
+                      {TANK_UNLOCKS.map((u) => {
                         const unlocked = progress.unlockedTanks.includes(u.model);
+                        const canUnlock = !unlocked && u.xpCost > 0 && progress.xp >= u.xpCost;
                         return (
-                          <div key={u.model} className="flex items-center justify-between mono text-[10px] border-b border-lime-900/30 pb-1.5">
-                            <span className={unlocked ? "text-lime-300" : "text-zinc-500"}>{unlocked ? "открыт" : "закр."} {u.name}</span>
-                            <span className={unlocked ? "text-lime-400" : "text-yellow-600"}>{unlocked ? "Открыт" : `${u.xpCost} XP`}</span>
+                          <div key={u.model} className="flex items-center justify-between gap-2 border-b border-lime-900/30 pb-1.5">
+                            <span className={`mono text-[10px] ${unlocked ? "text-lime-300" : "text-zinc-400"}`}>{u.name}</span>
+                            {unlocked ? (
+                              <span className="mono text-[10px] text-lime-400">открыт</span>
+                            ) : u.xpCost <= 0 ? (
+                              <span className="mono text-[10px] text-lime-400">базовый</span>
+                            ) : (
+                              <button onClick={() => onUnlock(u.model)} disabled={!canUnlock}
+                                className={`shrink-0 px-2 py-1 stencil text-[9px] rounded transition-colors ${canUnlock ? "bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700/70" : "bg-zinc-800/50 text-zinc-600 cursor-not-allowed"}`}>
+                                {progress.xp >= u.xpCost ? `открыть · ${u.xpCost} XP` : `${u.xpCost} XP`}
+                              </button>
+                            )}
                           </div>
                         );
                       })}

@@ -22,7 +22,7 @@ describe("loadProgress", () => {
     const p = loadProgress();
     expect(p.xp).toBe(0);
     expect(p.gold).toBe(0);
-    expect(p.upgrades).toEqual({});
+    expect(p.upgrades).toEqual({ e100: {}, t34: {}, t100lt: {} });
     expect(p.goldUpgrades).toEqual({});
     expect(p.purchasedCamos).toEqual([]);
     expect(p.equippedCamo).toBe("");
@@ -36,7 +36,7 @@ describe("loadProgress", () => {
     const p = loadProgress();
     expect(p.xp).toBe(100);
     expect(p.gold).toBe(50);
-    expect(p.upgrades).toEqual({ gun: 1 });
+    expect(p.upgrades).toEqual({ e100: { gun: 1 }, t34: { gun: 1 }, t100lt: { gun: 1 } });
     expect(p.purchasedCamos).toEqual(["forest"]);
     expect(p.unlockedTanks).toEqual(["t34", "t100lt"]);
     expect(p.stats.totalKills).toBe(5);
@@ -89,11 +89,11 @@ describe("saveProgress", () => {
   it("stores all fields", () => {
     const p = loadProgress();
     p.gold = 300;
-    p.upgrades = { gun: 2 };
+    p.upgrades = { e100: { gun: 2 }, t34: {}, t100lt: {} };
     saveProgress(p);
     const stored = JSON.parse(localStorage.getItem(KEY)!);
     expect(stored.gold).toBe(300);
-    expect(stored.upgrades).toEqual({ gun: 2 });
+    expect(stored.upgrades).toEqual({ e100: { gun: 2 }, t34: {}, t100lt: {} });
     expect(stored.unlockedTanks).toEqual(["t34"]);
   });
 });

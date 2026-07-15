@@ -112,7 +112,7 @@ function generateCamoTexture(camoType: CamoType): THREE.CanvasTexture {
   return tex;
 }
 
-export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColorOverride?: number, camoType?: CamoType): TankMesh {
+export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColorOverride?: number, camoType?: CamoType, headlights = true): TankMesh {
   const group = new THREE.Group();
   const bodyColor = bodyColorOverride ?? bodyColorFor(kind);
   const darkMult = 0.55;
@@ -251,6 +251,14 @@ export function createTankMesh(spec: TankSpec, kind: "player" | "bot", bodyColor
     const lightY = upperY - upperH * 0.05;
     addCylinder(group, 0.16, 0.12, [lightX, lightY, upperFrontZ - 0.02], matDetail, [Math.PI / 2, 0, 0], 14);
     addCylinder(group, 0.12, 0.14, [lightX, lightY, upperFrontZ + 0.05], matLight, [Math.PI / 2, 0, 0], 14);
+    if (headlights) {
+      const lamp = new THREE.SpotLight(0xfff4e0, 120, 48, Math.PI / 6, 0.5, 2);
+      lamp.position.set(lightX, lightY, upperFrontZ + 0.08);
+      const lampTarget = new THREE.Object3D();
+      lampTarget.position.set(lightX, lightY - 1.4, upperFrontZ + 24);
+      group.add(lamp, lampTarget);
+      lamp.target = lampTarget;
+    }
     addCylinder(group, spec.id === "e100" ? 0.2 : 0.14, spec.hull.length * 0.34, [side * (spec.hull.width / 2 - spec.track.width * 0.15), fenderTopY + 0.05, upperRearZ + spec.hull.length * 0.06], matMetal, [Math.PI / 2, 0, 0], 14);
   }
 

@@ -39,7 +39,7 @@ export interface PlayerStats {
 export interface PlayerProgress {
   xp: number;
   gold: number;
-  upgrades: Record<string, number>;
+  upgrades: Record<TankModel, Record<string, number>>;
   goldUpgrades: Record<string, boolean>;
   purchasedCamos: CamoType[];
   equippedCamo: CamoType;

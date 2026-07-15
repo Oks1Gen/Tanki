@@ -34,24 +34,25 @@ export default function App() {
           totalShotsFired: p.stats.totalShotsFired + stats.shotsFired,
           totalShotsHit: p.stats.totalShotsHit + stats.shotsHit,
         },
-        unlockedTanks: checkUnlocks(p.xp + xp, p.unlockedTanks),
       };
       saveProgress(next);
       return next;
     });
   }, []);
 
-  const checkUnlocks = useCallback((totalXp: number, current: TankModel[]): TankModel[] => {
-    const result = [...current];
-    for (const unlock of TANK_UNLOCKS) {
-      if (unlock.xpCost > 0 && !result.includes(unlock.model) && totalXp >= unlock.xpCost) {
-        result.push(unlock.model);
-      }
-    }
-    return result;
+  const buyUnlock = useCallback((model: TankModel) => {
+    setProgress((p) => {
+      const unlock = TANK_UNLOCKS.find((u) => u.model === model);
+      if (!unlock || unlock.xpCost <= 0) return p;
+      if (p.unlockedTanks.includes(model)) return p;
+      if (p.xp < unlock.xpCost) return p;
+      const next = { ...p, xp: p.xp - unlock.xpCost, unlockedTanks: [...p.unlockedTanks, model] };
+      saveProgress(next);
+      return next;
+    });
   }, []);
 
-  const buyUpgrade = useCallback((id: string) => {
+  const buyUpgrade = useCallback((id: string, tank?: TankModel) => {
     setProgress((p) => {
       // Gold upgrade purchase
       if (id.startsWith("gold_")) {
@@ -68,12 +69,14 @@ export default function App() {
         const upId = id.slice(11);
         const def = UPGRADES.find((u) => u.id === upId);
         if (!def) return p;
-        const level = (p.upgrades[upId] || 0) + 1;
+        const tankKey = tank ?? "t34";
+        const tankUp = p.upgrades[tankKey] || {};
+        const level = (tankUp[upId] || 0) + 1;
         if (level > def.maxLevel) return p;
         const xpCost = def.levels[level - 1].xpCost;
         const goldNeeded = Math.ceil(xpCost / 10);
         if (p.gold < goldNeeded) return p;
-        const next = { ...p, gold: p.gold - goldNeeded, upgrades: { ...p.upgrades, [upId]: level } };
+        const next = { ...p, gold: p.gold - goldNeeded, upgrades: { ...p.upgrades, [tankKey]: { ...tankUp, [upId]: level } } };
         saveProgress(next);
         return next;
       }
@@ -100,14 +103,16 @@ export default function App() {
         return p;
       }
 
-      // XP upgrade purchase
+      // XP upgrade purchase (per selected tank)
       {
-        const level = (p.upgrades[id] || 0) + 1;
+        const tankKey = tank ?? "t34";
+        const tankUp = p.upgrades[tankKey] || {};
+        const level = (tankUp[id] || 0) + 1;
         const def = UPGRADES.find((u) => u.id === id);
         if (!def || level > def.maxLevel) return p;
         const cost = def.levels[level - 1].xpCost;
         if (p.xp < cost) return p;
-        const next = { ...p, xp: p.xp - cost, upgrades: { ...p.upgrades, [id]: level } };
+        const next = { ...p, xp: p.xp - cost, upgrades: { ...p.upgrades, [tankKey]: { ...tankUp, [id]: level } } };
         saveProgress(next);
         return next;
       }
@@ -134,5 +139,5 @@ export default function App() {
     );
   }
 
-  return <Menu progress={progress} onStart={startGame} onBuy={buyUpgrade} />;
+  return <Menu progress={progress} onStart={startGame} onBuy={buyUpgrade} onUnlock={buyUnlock} />;
 }
